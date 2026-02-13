@@ -11,7 +11,7 @@ JTWebCrawler es un script Node.js que permite rastrear sitios web de forma confi
 - Permite interrupción ordenada (Ctrl+C) guardando resultados parciales.
 
 ## Autor
-- Jorge Tomé (jorgetome.info)
+- Jorge Tomé Hernando (<jorge@jorgetome.info>)
 
 ## Licencia
 Este proyecto está licenciado bajo la MIT License. Puedes consultar el archivo LICENSE para más detalles.
@@ -65,7 +65,7 @@ node src/main.js <URL> <PROFUNDIDAD> [--outputDir <directorio>] [--delay <ms>]
 Ejemplo:
 
 ```sh
-node src/main.js https://www.jorgetome.info 2 --outputDir resultados --delay 500
+node src/main.js https://www.exampleweb.com 2 --outputDir resultados --delay 500
 ```
 
 ## Scripts disponibles
