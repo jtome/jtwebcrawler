@@ -87,9 +87,14 @@ Esto revisará las dependencias y reportará vulnerabilidades de nivel alto o cr
 
 ## Salida
 
+
 Se generan dos ficheros en el directorio de salida:
 - `crawler-stats-YYYYMMDD_HHMM.json`: Estadísticas y parámetros de la ejecución
-- `crawler-inventory-YYYYMMDD_HHMM.csv`: Inventario de URLs, código de respuesta y tiempo de petición
+- `crawler-inventory-YYYYMMDD_HHMM.csv`: Inventario incremental de URLs visitadas. Incluye las columnas:
+  - `timestamp`: Fecha y hora ISO de la petición
+  - `url`: URL visitada
+  - `status`: Código de respuesta HTTP
+  - `elapsed_ms`: Tiempo de respuesta en milisegundos
 
 ## Tests
 

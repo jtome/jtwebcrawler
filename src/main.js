@@ -1,3 +1,30 @@
+// Escribe el fichero de estadísticas en JSON
+function writeOutput(stats) {
+  if (!stats || !stats.inventoryFile) return;
+  const outputDir = path.dirname(stats.inventoryFile);
+  const timestamp = new Date().toISOString().replace(/[-:T]/g, '').slice(0, 15);
+  const statsFile = path.join(outputDir, `crawler-stats-${timestamp}.json`);
+  // Construir el objeto de salida con orden: primero parámetros, luego resumen
+  // Incluir todos los parámetros de configuración relevantes
+  const runParams = {
+    url: stats.url || globalThis.runUrl,
+    depth: stats.depth || globalThis.runDepth,
+    delay: (stats.delay !== undefined ? stats.delay : (globalThis.runDelay !== undefined ? globalThis.runDelay : (globalThis.runConfig && globalThis.runConfig.delay))),
+    outputDir: (stats.outputDir || globalThis.runOutputDir || (globalThis.runConfig && globalThis.runConfig.outputDir)),
+    userAgent: (stats.userAgent || (globalThis.runConfig && globalThis.runConfig.userAgent)) || undefined,
+    headers: (stats.headers || (globalThis.runConfig && globalThis.runConfig.headers)) || undefined
+  };
+  const summary = { ...stats };
+  delete summary.errors;
+  delete summary.inventory;
+  delete summary.url;
+  delete summary.depth;
+  delete summary.delay;
+  delete summary.outputDir;
+  const output = { runParams, ...summary };
+  fs.writeFileSync(statsFile, JSON.stringify(output, null, 2), 'utf-8');
+  console.log(`Estadísticas guardadas en: ${statsFile}`);
+}
 const yargs = require('yargs');
 const { hideBin } = require('yargs/helpers');
 const { crawl } = require('./crawler');
@@ -36,6 +63,10 @@ function runCrawler() {
 
   const url = argv._[0];
   const depth = parseInt(argv._[1], 10);
+  globalThis.runUrl = url;
+  globalThis.runDepth = depth;
+  globalThis.runDelay = delay;
+  globalThis.runOutputDir = outputDir;
 
   // Cargar configuración
   const configPath = path.join(__dirname, 'config.json');
@@ -77,6 +108,9 @@ function runCrawler() {
 
   console.log(`Iniciando crawler en: ${url} con profundidad: ${depth} (delay medio: ${delay} ms)`);
 
+  config.outputDir = outputDir;
+  // Guardar config global para acceso en writeOutput
+  globalThis.runConfig = config;
   crawl(url, depth, config)
     .then(stats => {
       lastStats = stats;
@@ -89,6 +123,7 @@ function runCrawler() {
         }
       }
       writeOutput(stats);
+      console.log(`Inventario CSV generado en: ${stats.inventoryFile}`);
     })
     .catch(err => {
       console.error('Error en el crawler:', err);

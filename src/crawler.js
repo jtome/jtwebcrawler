@@ -5,6 +5,13 @@ const { URL } = require('url');
 async function crawl(startUrl, maxDepth, config) {
   const visited = new Set();
   const inventory = new Map();
+  const fs = require('fs');
+  const path = require('path');
+  // Determinar nombre de fichero de inventario
+  const outputDir = config.outputDir || '.';
+  const timestamp = new Date().toISOString().replace(/[-:T]/g, '').slice(0, 15);
+  const inventoryFile = path.join(outputDir, `crawler-inventory-${timestamp}.csv`);
+  let inventoryHeaderWritten = false;
   const stats = {
     pages_visited: 0,
     pages_success: 0,
@@ -78,6 +85,13 @@ async function crawl(startUrl, maxDepth, config) {
         stats.pages_failed++;
         stats.errors.push(`${url}: Código HTTP ${resp.status}`);
         inventory.set(url, { url, status, elapsed });
+        // Escribir en CSV
+        if (!inventoryHeaderWritten) {
+          fs.appendFileSync(inventoryFile, 'timestamp,url,status,elapsed_ms\n');
+          inventoryHeaderWritten = true;
+        }
+        const reqTimestamp = new Date(startReq).toISOString();
+        fs.appendFileSync(inventoryFile, `${reqTimestamp},${url.replace(/"/g, '""')},${status},${elapsed}\n`);
         return;
       }
       stats.total_bytes += resp.data.length || 0;
@@ -110,10 +124,18 @@ async function crawl(startUrl, maxDepth, config) {
       stats.errors.push(`${url}: ${e.message}`);
     }
     inventory.set(normUrl, { url: normUrl, status, elapsed });
+    // Escribir en CSV
+    if (!inventoryHeaderWritten) {
+      fs.appendFileSync(inventoryFile, 'timestamp,url,status,elapsed_ms\n');
+      inventoryHeaderWritten = true;
+    }
+    const reqTimestamp = new Date(startReq).toISOString();
+    fs.appendFileSync(inventoryFile, `${reqTimestamp},${normUrl.replace(/"/g, '""')},${status},${elapsed}\n`);
   }
   await _crawl(startUrl, 1);
   stats.duration_sec = (Date.now() - startTime) / 1000;
   stats.inventory = Array.from(inventory.values());
+  stats.inventoryFile = inventoryFile;
   return stats;
 }
 
