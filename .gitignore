@@ -1,0 +1,21 @@
+# Ignorar configuración sensible
+src/config.json
+
+# Node.js
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Salida del crawler
+output/
+
+# Entornos
+.env
+.env.*
+
+# Tests
+coverage/
+
+# VSCode
+.vscode/
