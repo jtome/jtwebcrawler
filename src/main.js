@@ -89,16 +89,16 @@ function runCrawler() {
     console.error('ERROR: La URL proporcionada no es válida.');
     process.exit(1);
   }
-  if (isNaN(depth) || depth < 0 || depth > 10) {
-    console.error('ERROR: La profundidad debe ser un número entero entre 0 y 10.');
+  if (isNaN(depth) || depth < 1 || depth > 10) {
+    console.error('ERROR: La profundidad debe ser un número entero entre 1 y 10.');
     process.exit(1);
   }
   if (delay < 0 || delay > 60000) {
-    console.error('ERROR: El delay debe ser un número positivo y razonable (0-60000 ms).');
+    console.error('ERROR: El delay debe ser un número entero entre 0 (no delay) y 60000 ms.');
     process.exit(1);
   }
   if (typeof outputDir !== 'string' || outputDir.length > 128) {
-    console.error('ERROR: El directorio de salida no es válido o es demasiado largo.');
+    console.error('ERROR: El directorio de salida no es válido o supera los 128 caracteres.');
     process.exit(1);
   }
 
