@@ -42,6 +42,15 @@ async function crawl(startUrl, maxDepth, config) {
     }
   }
 
+  // Generador de números aleatorios con distribución normal (Box-Muller)
+  function randomNormal(mean, std) {
+    let u = 0, v = 0;
+    while (u === 0) u = Math.random();
+    while (v === 0) v = Math.random();
+    let num = Math.sqrt(-2.0 * Math.log(u)) * Math.cos(2.0 * Math.PI * v);
+    return num * std + mean;
+  }
+
   async function _crawl(url, depth) {
     // Esperar un retardo aleatorio con media delay si está definido y es mayor que 0
     const delay = Number(config.delay) || 0;
@@ -50,14 +59,6 @@ async function crawl(startUrl, maxDepth, config) {
       let delayMs = Math.round(Math.max(0, randomNormal(delay, delay / 3)));
       await new Promise(res => setTimeout(res, delayMs));
     }
-      // Generador de números aleatorios con distribución normal (Box-Muller)
-      function randomNormal(mean, std) {
-        let u = 0, v = 0;
-        while (u === 0) u = Math.random();
-        while (v === 0) v = Math.random();
-        let num = Math.sqrt(-2.0 * Math.log(u)) * Math.cos(2.0 * Math.PI * v);
-        return num * std + mean;
-      }
     const normUrl = normalizeUrl(url);
     if (depth > maxDepth || visited.has(normUrl)) {
       stats.max_depth_reached = Math.max(stats.max_depth_reached, depth - 1);
