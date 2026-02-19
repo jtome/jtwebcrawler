@@ -1,3 +1,9 @@
+const yargs = require('yargs');
+const { hideBin } = require('yargs/helpers');
+const { crawl } = require('./crawler');
+const path = require('path');
+const fs = require('fs');
+
 // Escribe el fichero de estadísticas en JSON
 function writeOutput(stats) {
   if (!stats || !stats.inventoryFile) return;
@@ -25,13 +31,6 @@ function writeOutput(stats) {
   fs.writeFileSync(statsFile, JSON.stringify(output, null, 2), 'utf-8');
   console.log(`Estadísticas guardadas en: ${statsFile}`);
 }
-const yargs = require('yargs');
-const { hideBin } = require('yargs/helpers');
-const { crawl } = require('./crawler');
-const path = require('path');
-const fs = require('fs');
-
-
 
 function isValidUrl(str) {
   try {
@@ -63,10 +62,6 @@ function runCrawler() {
 
   const url = argv._[0];
   const depth = parseInt(argv._[1], 10);
-  globalThis.runUrl = url;
-  globalThis.runDepth = depth;
-  globalThis.runDelay = delay;
-  globalThis.runOutputDir = outputDir;
 
   // Cargar configuración
   const configPath = path.join(__dirname, 'config.json');
@@ -75,9 +70,15 @@ function runCrawler() {
     config = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
   }
 
-  // Determinar directorio de salida y delay antes de validar
-  var outputDir = (argv.outputDir !== undefined) ? argv.outputDir : (config.outputDir || '.');
-  var delay = (argv.delay !== undefined) ? argv.delay : (config.delay || 0);
+  // Determinar directorio de salida y delay antes de asignar globales y validar
+  const outputDir = (argv.outputDir !== undefined) ? argv.outputDir : (config.outputDir || '.');
+  const delay = (argv.delay !== undefined) ? argv.delay : (config.delay || 0);
+
+  // Guardar en globales para acceso en writeOutput
+  globalThis.runUrl = url;
+  globalThis.runDepth = depth;
+  globalThis.runDelay = delay;
+  globalThis.runOutputDir = outputDir;
 
   // Sobrescribir config con CLI si corresponde
   if (argv.userAgent) config.userAgent = argv.userAgent;
@@ -111,6 +112,9 @@ function runCrawler() {
   config.outputDir = outputDir;
   // Guardar config global para acceso en writeOutput
   globalThis.runConfig = config;
+
+  let lastStats = null;
+
   crawl(url, depth, config)
     .then(stats => {
       lastStats = stats;

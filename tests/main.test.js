@@ -28,7 +28,7 @@ describe('main.js CLI/validations', () => {
       execSync(`node "${mainPath}" https://httpbin.org/html 1 --delay -5`, { stdio: 'pipe' });
       throw new Error('Should have failed');
     } catch (e) {
-      expect(e.stderr.toString()).toMatch(/ERROR: El delay debe ser un número positivo/);
+      expect(e.stderr.toString()).toMatch(/ERROR: El delay debe ser un número entero entre 0/);
     }
   });
 
