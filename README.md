@@ -1,24 +1,23 @@
-
 # JTWebCrawler
 
-JTWebCrawler es un script Node.js que permite rastrear sitios web de forma configurable, generando estadísticas detalladas e inventario de URLs visitadas. El crawler acepta parámetros de URL, profundidad, directorio de salida y delay entre peticiones, y permite personalizar cabeceras y user-agent. Los resultados se guardan en ficheros CSV y JSON para su posterior análisis.
+JTWebCrawler es una aplicación web moderna y de alto rendimiento impulsada por Node.js y Express que permite rastrear sitios web de forma configurable. Genera estadísticas en tiempo real y construye un inventario detallado de URLs visitadas.
 
-## Funcionalidad
-- Rastrea un sitio web hasta la profundidad indicada, siguiendo solo enlaces internos.
-- Permite configurar el user-agent, cabeceras, directorio de salida y delay entre peticiones.
-- Genera estadísticas de rastreo y un inventario de URLs visitadas con código de respuesta y tiempo.
-- Valida todos los parámetros de entrada y permite auditoría de dependencias.
-- Permite interrupción ordenada (Ctrl+C) guardando resultados parciales.
+A través de su interfaz visual vibrante basada en **Glassmorphism**, el crawler permite supervisar el progreso de la exploración, interceptar errores HTTP y detener operaciones instantáneamente.
 
-## Autor
-- Jorge Tomé Hernando (<jorge@jorgetome.info>)
+## Características
 
-## Licencia
-Este proyecto está licenciado bajo la MIT License. Puedes consultar el archivo LICENSE para más detalles.
+- **Interfaz de Usuario Premium:** Panel de control ligero y responsivo con tema oscuro y animaciones dinámicas.
+- **Rastreo en Tiempo Real:** Monitorización en vivo del progreso mediante Server-Sent Events (SSE) que actualiza los contadores de éxitos y errores orgánicamente sin saturar la red.
+- **Cancelación Absoluta:** Botón de "Stop Crawler" acoplado a un `AbortController` en el servidor, permitiendo cortar los escaneos instantáneamente a nivel de hilo red.
+- **Resiliencia Frontend:** Recuperación automática de escaneos activos en la Interfaz (gracias al `localStorage`) si se recarga la pestaña por error.
+- **Resultados Detallados:** Exporta el inventario de rastreo a formato CSV, capturando código de estado HTTP y la latencia exacta.
 
 ## Estructura del proyecto
-- `src/`: Código fuente principal
-- `tests/`: (opcional) Pruebas unitarias
+
+- `src/server.js`: API y servidor HTTP web en Express.js.
+- `src/crawler.js`: Motor de rastreo lógico, concurrencia y gestión asíncrona.
+- `src/config.json`: Archivo para valores predeterminados de la app.
+- `public/`: Diseño UI (HTML, CSS vainilla, y App JS de conexión SSE).
 
 ## Instalación
 
@@ -26,95 +25,53 @@ Este proyecto está licenciado bajo la MIT License. Puedes consultar el archivo 
 npm install
 ```
 
-## Configuración
+## Configuración y Variables por Defecto
 
-El archivo `src/config.json` permite especificar:
-- `userAgent`: User-Agent para las peticiones
-- `headers`: Cabeceras HTTP adicionales
-- `outputDir`: Carpeta de salida por defecto
-- `delay`: Tiempo medio de retardo (ms) entre peticiones
+En el formulario web puedes escoger la URL, profundidad, User Agent y Delay en milisegundos.
+Sin embargo, el archivo `src/config.json` te permite definir políticas permanentes a nivel de servidor:
 
-**Importante:** No subas tu `src/config.json` al repositorio. Usa el archivo `src/config.example.json` como plantilla y referencia.
+- `userAgent`: User-Agent global para las peticiones (si el usuario no designa uno en la interfaz).
+- `headers`: Cabeceras HTTP persistentes adicionales.
+- `outputDir`: Nombre de la carpeta de salida (por defecto `output`).
+- `delay`: Tiempo medio de retardo (ms) por defecto entre peticiones.
 
-Para crear tu configuración personalizada:
-1. Copia `src/config.example.json` a `src/config.json`.
-2. Modifica los valores según tus necesidades.
+## Uso Rápido
 
-Ejemplo de configuración:
-
-```json
-{
-  "userAgent": "JTWebCrawler/1.0 (+https://tu-sitio.com)",
-  "headers": {
-    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-    "Accept-Language": "es-ES,es;q=0.9"
-  },
-  "outputDir": "output",
-  "delay": 500
-}
-```
-
-Puedes modificar este archivo para personalizar las peticiones y la salida.
-
-## Uso
+Para arrancar el servidor web, ejecuta en tu terminal:
 
 ```sh
-node src/main.js <URL> <PROFUNDIDAD> [--outputDir <directorio>] [--delay <ms>]
+npm run server
 ```
 
-Ejemplo:
+1. Abre tu navegador y dirígete a `http://localhost:3000`.
+2. Completa los requisitos de tu rastreo y presiona **Launch Crawler**.
+3. Verás los logs de descubrimiento inyectarse fluidamente, y la resolución (`✓ OK` o `✗ ERROR`) completarse en la misma línea en tiempo real.
+4. Consulta los documentos resultantes generados en tu carpeta `/output/`.
 
-```sh
-node src/main.js https://www.exampleweb.com 2 --outputDir resultados --delay 500
-```
+*Nota:* Si quieres utilizar el proyecto en modo antiguo sin interfaz desde la línea de comandos, aún puedes ejecutar `node src/main.js <URL> <PROF>`.
 
 ## Scripts disponibles
 
-- `npm start`: Ejecuta el crawler con los parámetros y configuración indicados.
-- `npm test`: Ejecuta los tests unitarios.
-- `npm run audit`: Ejecuta un análisis de seguridad automático sobre las dependencias del proyecto usando `npm audit --audit-level=high`.
+- `npm run server`: Levanta el panel WebApp y la API.
+- `npm start`: Inicia el modo heredado CLI.
+- `npm test`: Ejecuta los tests unitarios en Jest.
+- `npm run audit`: Ejecuta un análisis de seguridad profundo usando dependencias (npm audit).
+
+## Salida y Logs
+
+De manera predeterminada, los resultados se volcarán en el directorio `/output`.
+Se generarán dos ficheros principales:
+- `crawler-stats-YYYYMMDD_HH...json`: Resumen estadístico de iteraciones y dominios saltados por profundidad límite.
+- `crawler-inventory-YYYYMMDD_HH...csv`: Hoja de cálculo tabular secuencial que incluye fecha HTTP ISO, la URL absoluta normalizada, código HTTP, y el tiempo de respuesta (ms).
 
 ## Seguridad
 
-Para mantener el proyecto seguro, ejecuta periódicamente:
-
+Ejecuta habitualmente:
 ```sh
 npm run audit
 ```
+Esto chequeará vulnerabilidades críticas en la paquetería backend (Axios, Express, Cheerio).
 
-Esto revisará las dependencias y reportará vulnerabilidades de nivel alto o crítico. Se recomienda actualizar los paquetes afectados si se detectan problemas.
+## Licencia
 
-
-## Salida
-
-
-Se generan dos ficheros en el directorio de salida:
-- `crawler-stats-YYYYMMDD_HHMM.json`: Estadísticas y parámetros de la ejecución
-- `crawler-inventory-YYYYMMDD_HHMM.csv`: Inventario incremental de URLs visitadas. Incluye las columnas:
-  - `timestamp`: Fecha y hora ISO de la petición
-  - `url`: URL visitada
-  - `status`: Código de respuesta HTTP
-  - `elapsed_ms`: Tiempo de respuesta en milisegundos
-
-## Tests
-
-Para ejecutar los tests unitarios, asegúrate de tener instalado Jest:
-
-```sh
-npm install --save-dev jest
-```
-
-Luego ejecuta:
-
-```sh
-npm test
-```
-
-O directamente:
-
-```sh
-npx jest
-```
-
-Los tests se encuentran en la carpeta `tests/` y cubren validaciones, CLI y la función principal del crawler.
-
+Este proyecto está licenciado bajo la MIT License. Revisar el archivo `LICENSE` para los detalles legales.
