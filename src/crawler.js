@@ -2,7 +2,7 @@ const axios = require('axios');
 const cheerio = require('cheerio');
 const { URL } = require('url');
 
-async function crawl(startUrl, maxDepth, config) {
+async function crawl(startUrl, maxDepth, config, onProgress = null, isCancelled = () => false) {
   const visited = new Set();
   const inventory = new Map();
   const fs = require('fs');
@@ -24,6 +24,26 @@ async function crawl(startUrl, maxDepth, config) {
   const startTime = Date.now();
   const headers = Object.assign({}, config.headers || {});
   if (config.userAgent) headers['User-Agent'] = config.userAgent;
+
+  function emitProgress(data) {
+    if (!onProgress) return;
+    const currentStats = {
+      ...stats,
+      duration_sec: (Date.now() - startTime) / 1000
+    };
+    onProgress({ ...data, stats: currentStats });
+  }
+
+  const abortController = new AbortController();
+
+  // Mantener actualizado el stream de UI enviando las estadísticas de tiempo
+  // continuamente sin depender de un evento de crawling, dando impresión de tiempo real
+  const heartbeatInterval = setInterval(() => {
+    if (isCancelled() && !abortController.signal.aborted) {
+       abortController.abort();
+    }
+    emitProgress({ type: 'heartbeat' });
+  }, 500);
 
   // Normaliza una URL para evitar duplicados por barra final
   function normalizeUrl(url) {
@@ -52,12 +72,20 @@ async function crawl(startUrl, maxDepth, config) {
   }
 
   async function _crawl(url, depth) {
+    if (isCancelled()) return;
+    
     // Esperar un retardo aleatorio con media delay si está definido y es mayor que 0
     const delay = Number(config.delay) || 0;
     if (delay > 0 && depth > 0) {
       // Usar distribución normal truncada para evitar valores negativos
       let delayMs = Math.round(Math.max(0, randomNormal(delay, delay / 3)));
-      await new Promise(res => setTimeout(res, delayMs));
+      let elapsedDelay = 0;
+      // Esperar en iteraciones cortas para reaccionar a la cancelación
+      while (elapsedDelay < delayMs) {
+        if (isCancelled()) return;
+        await new Promise(res => setTimeout(res, 100));
+        elapsedDelay += 100;
+      }
     }
     const normUrl = normalizeUrl(url);
     if (depth > maxDepth || visited.has(normUrl)) {
@@ -65,26 +93,41 @@ async function crawl(startUrl, maxDepth, config) {
       return;
     }
     visited.add(normUrl);
+    if (isCancelled()) return;
+    
     const startReq = Date.now();
     let status = null;
     let elapsed = null;
     stats.pages_visited++;
-    // Mostrar información de cada página visitada
-    console.log(`[Profundidad ${depth}] Visitando: ${url}`);
+    const logMsg = `[Profundidad ${depth}] Visitando: ${url}`;
+    console.log(logMsg);
+    // Create a DOM-safe ID from the URL by replacing non-alphanumeric chars
+    const nodeId = 'log-' + Buffer.from(url).toString('base64').replace(/[^a-zA-Z0-9]/g, '');
+    emitProgress({ type: 'progress', depth, url, message: logMsg, nodeId });
     try {
-      const resp = await axios.get(url, { headers, timeout: 10000, maxRedirects: 5, validateStatus: null });
+      const resp = await axios.get(url, { 
+        headers, 
+        timeout: 10000, 
+        maxRedirects: 5, 
+        validateStatus: null,
+        signal: abortController.signal
+      });
       status = resp.status;
       elapsed = Date.now() - startReq;
       // Informar de redirección si la respuesta es 3xx
       if (resp.status >= 300 && resp.status < 400 && resp.headers.location) {
         const redirectUrl = resp.headers.location.startsWith('http') ? resp.headers.location : new URL(resp.headers.location, url).href;
-        console.log(`  > Redirección detectada: ${url} -> ${redirectUrl}`);
+        const redirMsg = `  > Redirección detectada: ${url} -> ${redirectUrl}`;
+        console.log(redirMsg);
+        emitProgress({ type: 'redirect', from: url, to: redirectUrl, message: redirMsg });
       }
       if (resp.status >= 200 && resp.status < 300) {
         stats.pages_success++;
+        emitProgress({ type: 'success', url, message: ` ✓ OK (${resp.status})`, nodeId });
       } else {
         stats.pages_failed++;
         stats.errors.push(`${url}: Código HTTP ${resp.status}`);
+        emitProgress({ type: 'page_error', url, message: ` ✗ ERROR (${resp.status})`, nodeId });
         inventory.set(url, { url, status, elapsed });
         // Escribir en CSV
         if (!inventoryHeaderWritten) {
@@ -115,14 +158,18 @@ async function crawl(startUrl, maxDepth, config) {
         });
         // Esperar a que todos los enlaces se rastreen antes de continuar
         for (const link of links) {
+          if (isCancelled()) break;
           await _crawl(link, depth + 1);
         }
       }
     } catch (e) {
-      status = e.response ? e.response.status : 'ERR';
+      status = e.response ? e.response.status : (axios.isCancel(e) ? 'CANCEL' : 'ERR');
       elapsed = Date.now() - startReq;
-      stats.pages_failed++;
-      stats.errors.push(`${url}: ${e.message}`);
+      if (!axios.isCancel(e)) {
+        stats.pages_failed++;
+        stats.errors.push(`${url}: ${e.message}`);
+        emitProgress({ type: 'page_error', url, message: ` ✗ Fallo local: ${e.message}`, nodeId });
+      }
     }
     inventory.set(normUrl, { url: normUrl, status, elapsed });
     // Escribir en CSV
@@ -134,6 +181,7 @@ async function crawl(startUrl, maxDepth, config) {
     fs.appendFileSync(inventoryFile, `${reqTimestamp},${normUrl.replace(/"/g, '""')},${status},${elapsed}\n`);
   }
   await _crawl(startUrl, 1);
+  clearInterval(heartbeatInterval);
   stats.duration_sec = (Date.now() - startTime) / 1000;
   stats.inventory = Array.from(inventory.values());
   stats.inventoryFile = inventoryFile;
